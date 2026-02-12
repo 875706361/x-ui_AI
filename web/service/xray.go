@@ -34,11 +34,11 @@ var (
 	gcInterval = time.Minute * 30 // 30分钟强制GC一次
 )
 
-// XrayServiceImpl 实现XrayService接口
-type XrayServiceImpl struct {
+// XrayService 实现XrayService接口
+type XrayService struct {
 	ctx            context.Context
-	inboundService InboundService
-	settingService SettingService
+	inboundService *InboundService
+	settingService *SettingService
 
 	// 配置缓存
 	configCache     *xray.Config
@@ -57,8 +57,8 @@ type XrayServiceImpl struct {
 }
 
 // NewXrayService 创建新的XrayService实例
-func NewXrayService(ctx context.Context) XrayService {
-	service := &XrayServiceImpl{
+func NewXrayService(ctx context.Context) *XrayService {
+	service := &XrayService{
 		ctx:              ctx,
 		configCacheTime:  time.Time{}, // 零值，表示未缓存
 		trafficCacheTime: time.Time{},
@@ -73,7 +73,7 @@ func NewXrayService(ctx context.Context) XrayService {
 }
 
 // 监控内存使用情况
-func (s *XrayServiceImpl) monitorMemory(ctx context.Context) {
+func (s *XrayService) monitorMemory(ctx context.Context) {
 	ticker := time.NewTicker(time.Minute * 10) // 每10分钟检查一次
 	defer ticker.Stop()
 
@@ -109,22 +109,22 @@ func (s *XrayServiceImpl) monitorMemory(ctx context.Context) {
 }
 
 // SetInboundService 设置InboundService依赖
-func (s *XrayServiceImpl) SetInboundService(inboundService InboundService) {
+func (s *XrayService) SetInboundService(inboundService *InboundService) {
 	s.inboundService = inboundService
 }
 
 // SetSettingService 设置SettingService依赖
-func (s *XrayServiceImpl) SetSettingService(settingService SettingService) {
+func (s *XrayService) SetSettingService(settingService *SettingService) {
 	s.settingService = settingService
 }
 
 // IsXrayRunning 检查Xray是否正在运行
-func (s *XrayServiceImpl) IsXrayRunning() bool {
+func (s *XrayService) IsXrayRunning() bool {
 	return p != nil && p.IsRunning()
 }
 
 // GetXrayErr 获取Xray错误
-func (s *XrayServiceImpl) GetXrayErr() error {
+func (s *XrayService) GetXrayErr() error {
 	if p == nil {
 		return nil
 	}
@@ -132,7 +132,7 @@ func (s *XrayServiceImpl) GetXrayErr() error {
 }
 
 // GetXrayResult 获取Xray运行结果
-func (s *XrayServiceImpl) GetXrayResult() string {
+func (s *XrayService) GetXrayResult() string {
 	if result != "" {
 		return result
 	}
@@ -147,7 +147,7 @@ func (s *XrayServiceImpl) GetXrayResult() string {
 }
 
 // GetXrayVersion 获取Xray版本
-func (s *XrayServiceImpl) GetXrayVersion() string {
+func (s *XrayService) GetXrayVersion() string {
 	if p == nil {
 		return "Unknown"
 	}
@@ -155,7 +155,7 @@ func (s *XrayServiceImpl) GetXrayVersion() string {
 }
 
 // GetXrayConfig 获取Xray配置
-func (s *XrayServiceImpl) GetXrayConfig() (*xray.Config, error) {
+func (s *XrayService) GetXrayConfig() (*xray.Config, error) {
 	// 检查服务依赖
 	if s.settingService == nil || s.inboundService == nil {
 		return nil, errors.New("服务依赖未设置")
@@ -213,7 +213,7 @@ func (s *XrayServiceImpl) GetXrayConfig() (*xray.Config, error) {
 }
 
 // GetXrayTraffic 获取Xray流量统计
-func (s *XrayServiceImpl) GetXrayTraffic() (map[string]int64, error) {
+func (s *XrayService) GetXrayTraffic() (map[string]int64, error) {
 	if !s.IsXrayRunning() {
 		return nil, ErrXrayNotRunning
 	}
@@ -242,8 +242,8 @@ func (s *XrayServiceImpl) GetXrayTraffic() (map[string]int64, error) {
 
 	result := make(map[string]int64, len(traffic))
 	for _, t := range traffic {
-		result[t.Tag] = t.Value
-		s.trafficCache[t.Tag] = t.Value
+		result[t.Tag] = t.Up + t.Down
+		s.trafficCache[t.Tag] = t.Up + t.Down
 	}
 	s.trafficCacheTime = time.Now()
 
@@ -251,7 +251,7 @@ func (s *XrayServiceImpl) GetXrayTraffic() (map[string]int64, error) {
 }
 
 // RestartXray 重启Xray服务
-func (s *XrayServiceImpl) RestartXray(force bool) error {
+func (s *XrayService) RestartXray(force bool) error {
 	lock.Lock()
 	defer lock.Unlock()
 	logger.Debug("restart xray, force:", force)
@@ -289,7 +289,7 @@ func (s *XrayServiceImpl) RestartXray(force bool) error {
 }
 
 // StopXray 停止Xray服务
-func (s *XrayServiceImpl) StopXray() error {
+func (s *XrayService) StopXray() error {
 	lock.Lock()
 	defer lock.Unlock()
 	logger.Debug("stop xray")
@@ -305,17 +305,17 @@ func (s *XrayServiceImpl) StopXray() error {
 }
 
 // SetToNeedRestart 标记Xray需要重启
-func (s *XrayServiceImpl) SetToNeedRestart() {
+func (s *XrayService) SetToNeedRestart() {
 	isNeedXrayRestart.Store(true)
 }
 
 // IsNeedRestartAndSetFalse 检查是否需要重启并重置标记
-func (s *XrayServiceImpl) IsNeedRestartAndSetFalse() bool {
+func (s *XrayService) IsNeedRestartAndSetFalse() bool {
 	return isNeedXrayRestart.CAS(true, false)
 }
 
 // InvalidateCache 使配置缓存失效
-func (s *XrayServiceImpl) InvalidateCache() {
+func (s *XrayService) InvalidateCache() {
 	s.configMutex.Lock()
 	s.configCache = nil
 	s.configCacheTime = time.Time{}
@@ -331,6 +331,13 @@ func (s *XrayServiceImpl) InvalidateCache() {
 	lastGCTime = time.Now()
 }
 
+// GetRawTraffic 获取原始Xray流量数据
+func (s *XrayService) GetRawTraffic() ([]*xray.Traffic, error) {
+	if !s.IsXrayRunning() {
+		return nil, ErrXrayNotRunning
+	}
+	return p.GetTraffic(true)
+}
 // 生成Reality密钥对
 func (s *XrayService) GenerateRealityKeyPair() (string, string, error) {
 	// 调用xray命令生成密钥对

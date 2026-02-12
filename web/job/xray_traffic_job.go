@@ -8,8 +8,8 @@ import (
 
 type XrayTrafficJob struct {
 	ctx            context.Context
-	xrayService    service.XrayService
-	inboundService service.InboundService
+	xrayService    *service.XrayService
+	inboundService *service.InboundService
 }
 
 func NewXrayTrafficJob(ctx context.Context) *XrayTrafficJob {
@@ -19,14 +19,15 @@ func NewXrayTrafficJob(ctx context.Context) *XrayTrafficJob {
 }
 
 func (j *XrayTrafficJob) Run() {
-	// 统计 Xray 流量
-	logger.Info("统计 Xray 流量...")
-	if !j.xrayService.IsXrayRunning() {
+	if j.xrayService == nil || !j.xrayService.IsXrayRunning() {
 		return
 	}
-	traffics, err := j.xrayService.GetXrayTraffic()
+	traffics, err := j.xrayService.GetRawTraffic()
 	if err != nil {
 		logger.Warning("get xray traffic failed:", err)
+		return
+	}
+	if traffics == nil {
 		return
 	}
 	err = j.inboundService.AddTraffic(traffics)

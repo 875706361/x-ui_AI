@@ -37,3 +37,6 @@ bin/
 logs/
 *.db
 config.json
+# Build artifacts
+x-ui
+*.tar.gz

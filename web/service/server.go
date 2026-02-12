@@ -72,26 +72,26 @@ type Release struct {
 	TagName string `json:"tag_name"`
 }
 
-// ServerServiceImpl 提供服务器状态和管理功能
-type ServerServiceImpl struct {
+// ServerService 提供服务器状态和管理功能
+type ServerService struct {
 	ctx         context.Context
-	xrayService XrayService
+	xrayService *XrayService
 }
 
 // NewServerService 创建新的ServerService实例
-func NewServerService(ctx context.Context) ServerService {
-	return &ServerServiceImpl{
+func NewServerService(ctx context.Context) *ServerService {
+	return &ServerService{
 		ctx: ctx,
 	}
 }
 
 // SetXrayService 设置XrayService依赖
-func (s *ServerServiceImpl) SetXrayService(xrayService XrayService) {
+func (s *ServerService) SetXrayService(xrayService *XrayService) {
 	s.xrayService = xrayService
 }
 
 // GetStatus 获取系统状态信息
-func (s *ServerServiceImpl) GetStatus(lastStatus *Status) *Status {
+func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 	now := time.Now()
 	status := &Status{
 		T: now.Unix(),
@@ -224,7 +224,7 @@ func (s *ServerServiceImpl) GetStatus(lastStatus *Status) *Status {
 }
 
 // GetXrayVersions 获取可用的Xray版本列表
-func (s *ServerServiceImpl) GetXrayVersions() ([]string, error) {
+func (s *ServerService) GetXrayVersions() ([]string, error) {
 	// 从GitHub API获取发布版本
 	url := "https://api.github.com/repos/XTLS/Xray-core/releases"
 
@@ -269,7 +269,7 @@ func (s *ServerServiceImpl) GetXrayVersions() ([]string, error) {
 }
 
 // downloadXRay 下载指定版本的Xray
-func (s *ServerServiceImpl) downloadXRay(version string) (string, error) {
+func (s *ServerService) downloadXRay(version string) (string, error) {
 	osName := runtime.GOOS
 	arch := runtime.GOARCH
 
@@ -326,7 +326,7 @@ func (s *ServerServiceImpl) downloadXRay(version string) (string, error) {
 }
 
 // UpdateXray 更新Xray到指定版本
-func (s *ServerServiceImpl) UpdateXray(version string) error {
+func (s *ServerService) UpdateXray(version string) error {
 	// 下载Xray
 	zipFileName, err := s.downloadXRay(version)
 	if err != nil {

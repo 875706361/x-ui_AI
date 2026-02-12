@@ -127,7 +127,7 @@ func NewServer() *Server {
 func (s *Server) initializeServices() error {
 	s.xrayService = service.NewXrayService(s.ctx)
 	s.settingService = service.NewSettingService(s.ctx)
-	s.inboundService = service.NewInboundService(s.ctx)
+	s.inboundService = &service.InboundService{}
 
 	// 设置服务之间的依赖关系
 	s.xrayService.SetInboundService(s.inboundService)
