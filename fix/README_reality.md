@@ -21,7 +21,7 @@ Reality协议需要一对密钥（私钥和公钥）才能正常工作：
 这是最简单的方法，脚本会自动检测并修复所有问题：
 
 ```bash
-bash -c "$(curl -L https://raw.githubusercontent.com/875706361/x-ui_he/master/fix/reality_fix.sh)"
+bash -c "$(curl -L https://raw.githubusercontent.com/875706361/x-ui_AI/master/fix/reality_fix.sh)"
 ```
 
 该脚本会：
@@ -35,7 +35,7 @@ bash -c "$(curl -L https://raw.githubusercontent.com/875706361/x-ui_he/master/fi
 
 1. 下载修复工具源代码：
 ```bash
-wget https://raw.githubusercontent.com/875706361/x-ui_he/master/fix/reality_key_fix.go
+wget https://raw.githubusercontent.com/875706361/x-ui_AI/master/fix/reality_key_fix.go
 ```
 
 2. 编译工具：

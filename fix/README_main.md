@@ -62,7 +62,7 @@ sqlite3 /etc/x-ui/x-ui.db
 ## 在线获取帮助
 
 如有任何问题，请访问GitHub仓库获取最新版本和帮助：
-https://github.com/875706361/x-ui_he
+https://github.com/875706361/x-ui_AI
 
 ## 版本和许可
 
