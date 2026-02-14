@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"sync"
 	"time"
 	"x-ui/util/optimize"
 	"x-ui/web/global"
@@ -16,6 +17,7 @@ type ServerController struct {
 
 	lastStatus        *service.Status
 	lastGetStatusTime time.Time
+	statusLock        sync.Mutex
 
 	lastVersions        []string
 	lastGetVersionsTime time.Time
@@ -43,6 +45,10 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 }
 
 func (a *ServerController) refreshStatus() {
+	if !a.statusLock.TryLock() {
+		return
+	}
+	defer a.statusLock.Unlock()
 	a.lastStatus = a.serverService.GetStatus(a.lastStatus)
 }
 

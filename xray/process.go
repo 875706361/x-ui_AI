@@ -7,9 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/Workiva/go-datastructures/queue"
-	statsservice "github.com/xtls/xray-core/app/stats/command"
-	"google.golang.org/grpc"
 	"io/fs"
 	"os"
 	"os/exec"
@@ -17,6 +14,10 @@ import (
 	"strings"
 	"time"
 	"x-ui/util/common"
+
+	"github.com/Workiva/go-datastructures/queue"
+	statsservice "github.com/xtls/xray-core/app/stats/command"
+	"google.golang.org/grpc"
 )
 
 var trafficRegex = regexp.MustCompile("(inbound|outbound)>>>([^>]+)>>>traffic>>>(downlink|uplink)")
@@ -64,7 +65,7 @@ type process struct {
 	config  *Config
 	lines   *queue.Queue
 	exitErr error
-	
+
 	// 添加停止信号，用于优雅关闭goroutine
 	stopChan chan struct{}
 }
@@ -181,6 +182,13 @@ func (p *process) Start() (err error) {
 			stdReader.Close()
 		}()
 		reader := bufio.NewReaderSize(stdReader, 8192)
+
+		// Rate limiting to prevent CPU high load
+		const limitInterval = time.Second
+		const maxLinesPerInterval = 500
+		var lineCount int
+		var lastCheck time.Time = time.Now()
+
 		for {
 			select {
 			case <-p.stopChan:
@@ -190,6 +198,19 @@ func (p *process) Start() (err error) {
 				if err != nil {
 					return
 				}
+
+				// Check rate
+				lineCount++
+				if lineCount >= maxLinesPerInterval {
+					now := time.Now()
+					if now.Sub(lastCheck) < limitInterval {
+						// Too fast, sleep a bit to reduce CPU usage
+						time.Sleep(100 * time.Millisecond)
+					}
+					lineCount = 0
+					lastCheck = time.Now()
+				}
+
 				if p.lines.Len() >= 100 {
 					p.lines.Get(1)
 				}
@@ -204,6 +225,13 @@ func (p *process) Start() (err error) {
 			errReader.Close()
 		}()
 		reader := bufio.NewReaderSize(errReader, 8192)
+
+		// Rate limiting to prevent CPU high load
+		const limitInterval = time.Second
+		const maxLinesPerInterval = 500
+		var lineCount int
+		var lastCheck time.Time = time.Now()
+
 		for {
 			select {
 			case <-p.stopChan:
@@ -213,6 +241,19 @@ func (p *process) Start() (err error) {
 				if err != nil {
 					return
 				}
+
+				// Check rate
+				lineCount++
+				if lineCount >= maxLinesPerInterval {
+					now := time.Now()
+					if now.Sub(lastCheck) < limitInterval {
+						// Too fast, sleep a bit to reduce CPU usage
+						time.Sleep(100 * time.Millisecond)
+					}
+					lineCount = 0
+					lastCheck = time.Now()
+				}
+
 				if p.lines.Len() >= 100 {
 					p.lines.Get(1)
 				}
@@ -238,10 +279,10 @@ func (p *process) Stop() error {
 	if !p.IsRunning() {
 		return errors.New("xray is not running")
 	}
-	
+
 	// 发送停止信号给goroutine
 	close(p.stopChan)
-	
+
 	return p.cmd.Process.Kill()
 }
 
