@@ -15,7 +15,6 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
-	"runtime"
 	"time"
 	"x-ui/logger"
 	"x-ui/util/sys"
@@ -198,20 +197,9 @@ func (s *ServerService) GetXrayVersions() ([]string, error) {
 }
 
 func (s *ServerService) downloadXRay(version string) (string, error) {
-	osName := runtime.GOOS
-	arch := runtime.GOARCH
-
-	switch osName {
-	case "darwin":
-		osName = "macos"
-	}
-
-	switch arch {
-	case "amd64":
-		arch = "64"
-	case "arm64":
-		arch = "arm64-v8a"
-	}
+	// 固定为Linux AMD64，因为项目只在Linux环境部署
+	osName := "linux"
+	arch := "64"
 
 	fileName := fmt.Sprintf("Xray-%s-%s.zip", osName, arch)
 	url := fmt.Sprintf("https://github.com/XTLS/Xray-core/releases/download/%s/%s", version, fileName)

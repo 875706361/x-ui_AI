@@ -12,6 +12,7 @@ import (
 	"x-ui/config"
 	"x-ui/database"
 	"x-ui/logger"
+	"x-ui/util/optimize"
 	"x-ui/v2ui"
 	"x-ui/web"
 	"x-ui/web/global"
@@ -33,6 +34,9 @@ func runWebServer() {
 	default:
 		log.Fatal("unknown log level:", config.GetLogLevel())
 	}
+
+	// 执行系统自动优化
+	optimize.Init()
 
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {

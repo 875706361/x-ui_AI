@@ -7,16 +7,27 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
+	"time"
+)
+
+var (
+	tcpCountCache     int
+	udpCountCache     int
+lastTCPUpdate     time.Time
+	lastUDPUpdate     time.Time
+	cacheMutex        sync.RWMutex
+cacheDuration     = 30 * time.Second
 )
 
 func getLinesNum(filename string) (int, error) {
 	file, err := os.Open(filename)
-	if err != nil {
+if err != nil {
 		return 0, err
 	}
 	defer file.Close()
 
-	sum := 0
+sum := 0
 	buf := make([]byte, 8192)
 	for {
 		n, err := file.Read(buf)
@@ -40,8 +51,23 @@ func getLinesNum(filename string) (int, error) {
 }
 
 func GetTCPCount() (int, error) {
+	cacheMutex.RLock()
+	if time.Since(lastTCPUpdate) < cacheDuration {
+		result := tcpCountCache
+		cacheMutex.RUnlock()
+		return result, nil
+	}
+	cacheMutex.RUnlock()
+	
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+	
+	// Double check after acquiring write lock
+	if time.Since(lastTCPUpdate) < cacheDuration {
+		return tcpCountCache, nil
+	}
+	
 	root := HostProc()
-
 	tcp4, err := getLinesNum(fmt.Sprintf("%v/net/tcp", root))
 	if err != nil {
 		return tcp4, err
@@ -50,13 +76,31 @@ func GetTCPCount() (int, error) {
 	if err != nil {
 		return tcp4 + tcp6, nil
 	}
-
-	return tcp4 + tcp6, nil
+	
+	result := tcp4 + tcp6
+	tcpCountCache = result
+	lastTCPUpdate = time.Now()
+	return result, nil
 }
 
 func GetUDPCount() (int, error) {
+	cacheMutex.RLock()
+	if time.Since(lastUDPUpdate) < cacheDuration {
+		result := udpCountCache
+		cacheMutex.RUnlock()
+		return result, nil
+	}
+	cacheMutex.RUnlock()
+	
+	cacheMutex.Lock()
+	defer cacheMutex.Unlock()
+	
+	// Double check after acquiring write lock
+	if time.Since(lastUDPUpdate) < cacheDuration {
+		return udpCountCache, nil
+	}
+	
 	root := HostProc()
-
 	udp4, err := getLinesNum(fmt.Sprintf("%v/net/udp", root))
 	if err != nil {
 		return udp4, err
@@ -65,6 +109,9 @@ func GetUDPCount() (int, error) {
 	if err != nil {
 		return udp4 + udp6, nil
 	}
-
-	return udp4 + udp6, nil
+	
+	result := udp4 + udp6
+	udpCountCache = result
+	lastUDPUpdate = time.Now()
+	return result, nil
 }

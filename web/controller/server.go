@@ -3,6 +3,7 @@ package controller
 import (
 	"github.com/gin-gonic/gin"
 	"time"
+	"x-ui/util/optimize"
 	"x-ui/web/global"
 	"x-ui/web/service"
 )
@@ -35,6 +36,7 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.POST("/status", a.status)
 	g.POST("/getXrayVersion", a.getXrayVersion)
 	g.POST("/installXray/:version", a.installXray)
+	g.POST("/getOptimizationStatus", a.getOptimizationStatus)
 }
 
 func (a *ServerController) refreshStatus() {
@@ -44,7 +46,7 @@ func (a *ServerController) refreshStatus() {
 func (a *ServerController) startTask() {
 	webServer := global.GetWebServer()
 	c := webServer.GetCron()
-	c.AddFunc("@every 2s", func() {
+	c.AddFunc("@every 10s", func() {
 		now := time.Now()
 		if now.Sub(a.lastGetStatusTime) > time.Minute*3 {
 			return
@@ -82,4 +84,9 @@ func (a *ServerController) installXray(c *gin.Context) {
 	version := c.Param("version")
 	err := a.serverService.UpdateXray(version)
 	jsonMsg(c, "安装 xray", err)
+}
+
+func (a *ServerController) getOptimizationStatus(c *gin.Context) {
+	status := optimize.GetStatus()
+	jsonObj(c, status, nil)
 }

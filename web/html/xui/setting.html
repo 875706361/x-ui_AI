@@ -150,7 +150,7 @@
         async mounted() {
             await this.getAllSetting();
             while (true) {
-                await PromiseUtil.sleep(1000);
+                await PromiseUtil.sleep(3000);
                 this.saveBtnDisable = this.oldAllSetting.equals(this.allSetting);
             }
         },

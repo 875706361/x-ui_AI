@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"runtime"
 	"strings"
 	"time"
 	"x-ui/util/common"
@@ -23,7 +22,7 @@ import (
 var trafficRegex = regexp.MustCompile("(inbound|outbound)>>>([^>]+)>>>traffic>>>(downlink|uplink)")
 
 func GetBinaryName() string {
-	return fmt.Sprintf("xray-%s-%s", runtime.GOOS, runtime.GOARCH)
+	return "xray-linux-amd64"
 }
 
 func GetBinaryPath() string {
@@ -52,7 +51,7 @@ type Process struct {
 
 func NewProcess(xrayConfig *Config) *Process {
 	p := &Process{newProcess(xrayConfig)}
-	runtime.SetFinalizer(p, stopProcess)
+	// 移除runtime.SetFinalizer，因为只在Linux环境运行
 	return p
 }
 
@@ -65,13 +64,17 @@ type process struct {
 	config  *Config
 	lines   *queue.Queue
 	exitErr error
+	
+	// 添加停止信号，用于优雅关闭goroutine
+	stopChan chan struct{}
 }
 
 func newProcess(config *Config) *process {
 	return &process{
-		version: "Unknown",
-		config:  config,
-		lines:   queue.New(100),
+		version:  "Unknown",
+		config:   config,
+		lines:    queue.New(100),
+		stopChan: make(chan struct{}),
 	}
 }
 
@@ -179,14 +182,19 @@ func (p *process) Start() (err error) {
 		}()
 		reader := bufio.NewReaderSize(stdReader, 8192)
 		for {
-			line, _, err := reader.ReadLine()
-			if err != nil {
+			select {
+			case <-p.stopChan:
 				return
+			default:
+				line, _, err := reader.ReadLine()
+				if err != nil {
+					return
+				}
+				if p.lines.Len() >= 100 {
+					p.lines.Get(1)
+				}
+				p.lines.Put(string(line))
 			}
-			if p.lines.Len() >= 100 {
-				p.lines.Get(1)
-			}
-			p.lines.Put(string(line))
 		}
 	}()
 
@@ -197,14 +205,19 @@ func (p *process) Start() (err error) {
 		}()
 		reader := bufio.NewReaderSize(errReader, 8192)
 		for {
-			line, _, err := reader.ReadLine()
-			if err != nil {
+			select {
+			case <-p.stopChan:
 				return
+			default:
+				line, _, err := reader.ReadLine()
+				if err != nil {
+					return
+				}
+				if p.lines.Len() >= 100 {
+					p.lines.Get(1)
+				}
+				p.lines.Put(string(line))
 			}
-			if p.lines.Len() >= 100 {
-				p.lines.Get(1)
-			}
-			p.lines.Put(string(line))
 		}
 	}()
 
@@ -225,6 +238,10 @@ func (p *process) Stop() error {
 	if !p.IsRunning() {
 		return errors.New("xray is not running")
 	}
+	
+	// 发送停止信号给goroutine
+	close(p.stopChan)
+	
 	return p.cmd.Process.Kill()
 }
 

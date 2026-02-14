@@ -99,6 +99,20 @@
                     </a-col>
                     <a-col :sm="24" :md="12">
                         <a-card hoverable>
+                            系统优化状态:
+                            <a-tag :color="optimization.kernel_optimized ? 'green' : 'orange'">
+                                [[ optimization.kernel_optimized ? '内核已优化' : '未优化' ]]
+                            </a-tag>
+                            <a-tag :color="optimization.bbr_enabled ? 'green' : 'orange'">
+                                [[ optimization.bbr_enabled ? 'BBR已开启' : 'BBR未开启' ]]
+                            </a-tag>
+                            <div style="margin-top: 5px">
+                                内存限制: [[ sizeFormat(optimization.mem_limit) ]] | GC频率: [[ optimization.gc_percent ]]%
+                            </div>
+                        </a-card>
+                    </a-col>
+                    <a-col :sm="24" :md="12">
+                        <a-card hoverable>
                             tcp / udp 连接数: [[ status.tcpCount ]] / [[ status.udpCount ]]
                             <a-tooltip>
                                 <template slot="title">
@@ -275,6 +289,13 @@
         data: {
             siderDrawer,
             status: new Status(),
+            optimization: {
+                total_memory: 0,
+                mem_limit: 0,
+                gc_percent: 100,
+                bbr_enabled: false,
+                kernel_optimized: false
+            },
             versionModal,
             spinning: false,
             loadingTip: '加载中',
@@ -288,6 +309,12 @@
                 const msg = await HttpUtil.post('/server/status');
                 if (msg.success) {
                     this.setStatus(msg.obj);
+                }
+            },
+            async getOptimizationStatus() {
+                const msg = await HttpUtil.post('/server/getOptimizationStatus');
+                if (msg.success) {
+                    this.optimization = msg.obj;
                 }
             },
             setStatus(data) {
@@ -318,13 +345,14 @@
             },
         },
         async mounted() {
+            this.getOptimizationStatus();
             while (true) {
                 try {
                     await this.getStatus();
                 } catch (e) {
                     console.error(e);
                 }
-                await PromiseUtil.sleep(2000);
+                await PromiseUtil.sleep(10000);
             }
         },
     });
