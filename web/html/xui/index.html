@@ -78,6 +78,8 @@
                             </a-tooltip>
                             <a-tag color="green" @click="openSelectV2rayVersion">[[ status.xray.version ]]</a-tag>
                             <a-tag color="blue" @click="openSelectV2rayVersion">切换版本</a-tag>
+                            <a-tag color="orange" @click="restartXray">重启</a-tag>
+                            <a-tag color="red" @click="stopXray">停止</a-tag>
                         </a-card>
                     </a-col>
                     <a-col :sm="24" :md="12">
@@ -339,6 +341,32 @@
                         versionModal.hide();
                         this.loading(true, '安装中，请不要刷新此页面');
                         await HttpUtil.post(`/server/installXray/${version}`);
+                        this.loading(false);
+                    },
+                });
+            },
+            restartXray() {
+                this.$confirm({
+                    title: '重启 xray',
+                    content: '是否重启 xray 服务?',
+                    okText: '确定',
+                    cancelText: '取消',
+                    onOk: async () => {
+                        this.loading(true, '重启中，请稍候...');
+                        await HttpUtil.post('/server/restartXray');
+                        this.loading(false);
+                    },
+                });
+            },
+            stopXray() {
+                this.$confirm({
+                    title: '停止 xray',
+                    content: '是否停止 xray 服务?',
+                    okText: '确定',
+                    cancelText: '取消',
+                    onOk: async () => {
+                        this.loading(true, '停止中，请稍候...');
+                        await HttpUtil.post('/server/stopXray');
                         this.loading(false);
                     },
                 });

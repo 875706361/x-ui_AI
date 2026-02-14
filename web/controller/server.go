@@ -1,11 +1,12 @@
 package controller
 
 import (
-	"github.com/gin-gonic/gin"
 	"time"
 	"x-ui/util/optimize"
 	"x-ui/web/global"
 	"x-ui/web/service"
+
+	"github.com/gin-gonic/gin"
 )
 
 type ServerController struct {
@@ -36,6 +37,8 @@ func (a *ServerController) initRouter(g *gin.RouterGroup) {
 	g.POST("/status", a.status)
 	g.POST("/getXrayVersion", a.getXrayVersion)
 	g.POST("/installXray/:version", a.installXray)
+	g.POST("/restartXray", a.restartXray)
+	g.POST("/stopXray", a.stopXray)
 	g.POST("/getOptimizationStatus", a.getOptimizationStatus)
 }
 
@@ -84,6 +87,16 @@ func (a *ServerController) installXray(c *gin.Context) {
 	version := c.Param("version")
 	err := a.serverService.UpdateXray(version)
 	jsonMsg(c, "安装 xray", err)
+}
+
+func (a *ServerController) restartXray(c *gin.Context) {
+	err := a.serverService.RestartXray()
+	jsonMsg(c, "重启 xray", err)
+}
+
+func (a *ServerController) stopXray(c *gin.Context) {
+	err := a.serverService.StopXray()
+	jsonMsg(c, "停止 xray", err)
 }
 
 func (a *ServerController) getOptimizationStatus(c *gin.Context) {

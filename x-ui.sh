@@ -373,6 +373,37 @@ check_install() {
     fi
 }
 
+check_optimization_status() {
+    # 检查BBR是否启用
+    local bbr_status="${red}未启用${plain}"
+    if [ -f /proc/sys/net/ipv4/tcp_congestion_control ]; then
+        local congestion_control=$(cat /proc/sys/net/ipv4/tcp_congestion_control 2>/dev/null)
+        if [[ "$congestion_control" == "bbr" ]]; then
+            bbr_status="${green}已启用${plain}"
+        fi
+    fi
+    
+    # 检查内存限制设置
+    local mem_limit="${yellow}未知${plain}"
+    if [ -f /proc/meminfo ]; then
+        local total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+        local total_mem_mb=$((total_mem_kb / 1024))
+        mem_limit="${total_mem_mb}MB"
+    fi
+    
+    # 检查内核优化
+    local kernel_opt="${red}未优化${plain}"
+    if [ -f /proc/sys/net/core/rmem_max ] && [ -f /proc/sys/net/core/wmem_max ]; then
+        local rmem_max=$(cat /proc/sys/net/core/rmem_max 2>/dev/null)
+        local wmem_max=$(cat /proc/sys/net/core/wmem_max 2>/dev/null)
+        if [[ $rmem_max -ge 262144 ]] && [[ $wmem_max -ge 262144 ]]; then
+            kernel_opt="${green}已优化${plain}"
+        fi
+    fi
+    
+    echo -e "系统优化: BBR:${bbr_status} | 内存:${mem_limit} | 内核:${kernel_opt}"
+}
+
 show_status() {
     check_status
     case $? in
@@ -389,6 +420,7 @@ show_status() {
         ;;
     esac
     show_xray_status
+    check_optimization_status
 }
 
 show_enable_status() {

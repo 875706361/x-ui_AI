@@ -71,6 +71,14 @@ type ServerService struct {
 	xrayService XrayService
 }
 
+func (s *ServerService) RestartXray() error {
+	return s.xrayService.RestartXray(true)
+}
+
+func (s *ServerService) StopXray() error {
+	return s.xrayService.StopXray()
+}
+
 func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 	now := time.Now()
 	status := &Status{
