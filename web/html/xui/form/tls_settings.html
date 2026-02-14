@@ -2,23 +2,23 @@
 <!-- tls enable -->
 <a-form layout="inline" v-if="inbound.canSetTls()">
     <a-form-item label="tls">
-        <a-switch v-model="inbound.tls">
-        </a-switch>
+        <a-switch v-model="inbound.tls" :disabled="inbound.xtls || inbound.stream.isReality"></a-switch>
     </a-form-item>
     <a-form-item v-if="inbound.canEnableXTls()" label="xtls">
-        <a-switch v-model="inbound.xtls"></a-switch>
+        <a-switch v-model="inbound.xtls" :disabled="inbound.tls || inbound.stream.isReality"></a-switch>
+    </a-form-item>
+    <a-form-item v-if="inbound.canEnableReality()" label="reality">
+        <a-switch v-model="inbound.stream.isReality" :disabled="inbound.tls || inbound.xtls"></a-switch>
     </a-form-item>
 </a-form>
 
 <!-- tls settings -->
-<a-form v-if="inbound.tls || inbound.xtls"
-        layout="inline">
+<a-form v-if="inbound.tls || inbound.xtls" layout="inline">
     <a-form-item label="域名">
         <a-input v-model.trim="inbound.stream.tls.server"></a-input>
     </a-form-item>
     <a-form-item label="证书">
-        <a-radio-group v-model="inbound.stream.tls.certs[0].useFile"
-                       button-style="solid">
+        <a-radio-group v-model="inbound.stream.tls.certs[0].useFile" button-style="solid">
             <a-radio-button :value="true">certificate file path</a-radio-button>
             <a-radio-button :value="false">certificate file content</a-radio-button>
         </a-radio-group>
@@ -33,13 +33,27 @@
     </template>
     <template v-else>
         <a-form-item label="公钥内容">
-            <a-input type="textarea" :rows="2"
-                     v-model="inbound.stream.tls.certs[0].cert"></a-input>
+            <a-input type="textarea" :rows="2" v-model="inbound.stream.tls.certs[0].cert"></a-input>
         </a-form-item>
         <a-form-item label="密钥内容">
-            <a-input type="textarea" :rows="2"
-                     v-model="inbound.stream.tls.certs[0].key"></a-input>
+            <a-input type="textarea" :rows="2" v-model="inbound.stream.tls.certs[0].key"></a-input>
         </a-form-item>
     </template>
+</a-form>
+
+<!-- reality settings -->
+<a-form v-if="inbound.stream.isReality" layout="inline">
+    <a-form-item label="Dest">
+        <a-input v-model.trim="inbound.stream.reality.dest" placeholder="example.com:443"></a-input>
+    </a-form-item>
+    <a-form-item label="ServerNames">
+        <a-input v-model.trim="inbound.stream.reality.serverNames" placeholder="example.com,www.example.com"></a-input>
+    </a-form-item>
+    <a-form-item label="PrivateKey">
+        <a-input v-model.trim="inbound.stream.reality.privateKey"></a-input>
+    </a-form-item>
+    <a-form-item label="ShortIds">
+        <a-input v-model.trim="inbound.stream.reality.shortIds" placeholder="0123456789abcdef"></a-input>
+    </a-form-item>
 </a-form>
 {{end}}

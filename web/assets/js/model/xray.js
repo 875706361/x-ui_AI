@@ -485,6 +485,55 @@ TlsStreamSettings.Cert = class extends XrayCommonClass {
     }
 };
 
+ass RealityStreamSettings extends XrayCommonClass {
+    constructor(show = false, dest = "", serverNames = "", privateKey = "", minClient = "", maxClient = "", maxTimediff = 0, shortIds = "", fingerprint = "chrome", serverName = "", publicKey = "") {
+        super();
+        this.show = show;
+        this.dest = dest;
+        this.serverNames = serverNames;
+        this.privateKey = privateKey;
+        this.minClient = minClient;
+        this.maxClient = maxClient;
+        this.maxTimediff = maxTimediff;
+        this.shortIds = shortIds;
+        this.fingerprint = fingerprint;
+        this.serverName = serverName;
+        this.publicKey = publicKey;
+    }
+
+    static fromJson(json = {}) {
+        return new RealityStreamSettings(
+            json.show,
+            json.dest,
+            json.serverNames ? json.serverNames.join(",") : "",
+            json.privateKey,
+            json.minClient,
+            json.maxClient,
+            json.maxTimediff,
+            json.shortIds ? json.shortIds.join(",") : "",
+            json.fingerprint,
+            json.serverName,
+            json.publicKey,
+        );
+    }
+
+    toJson() {
+        return {
+            show: this.show,
+            dest: this.dest,
+            serverNames: this.serverNames.split(","),
+            privateKey: this.privateKey,
+            minClient: this.minClient,
+            maxClient: this.maxClient,
+            maxTimediff: this.maxTimediff,
+            shortIds: this.shortIds.split(","),
+            fingerprint: this.fingerprint,
+            serverName: this.serverName,
+            publicKey: this.publicKey,
+        };
+    }
+}
+
 class StreamSettings extends XrayCommonClass {
     constructor(network='tcp',
                 security='none',
@@ -495,6 +544,7 @@ class StreamSettings extends XrayCommonClass {
                 httpSettings=new HttpStreamSettings(),
                 quicSettings=new QuicStreamSettings(),
                 grpcSettings=new GrpcStreamSettings(),
+                realitySettings=new RealityStreamSettings(),
                 ) {
         super();
         this.network = network;
@@ -506,6 +556,7 @@ class StreamSettings extends XrayCommonClass {
         this.http = httpSettings;
         this.quic = quicSettings;
         this.grpc = grpcSettings;
+        this.reality = realitySettings;
     }
 
     get isTls() {
@@ -525,9 +576,53 @@ class StreamSettings extends XrayCommonClass {
     }
 
     set isXTls(isXTls) {
-        if (isXTls) {
-            this.security = 'xtls';
+    get isReality() {
+        return this.security === "reality";
+    }
+
+    set isReality(isReality) {
+        if (isReality) {
+            this.security = "reality";
         } else {
+            this.security = "none";
+        }
+    }
+        if (isXTls) {
+    get isReality() {
+        return this.security === "reality";
+    }
+
+    set isReality(isReality) {
+        if (isReality) {
+            this.security = "reality";
+        } else {
+            this.security = "none";
+        }
+    }
+            this.security = 'xtls';
+    get isReality() {
+        return this.security === "reality";
+    }
+
+    set isReality(isReality) {
+        if (isReality) {
+            this.security = "reality";
+        } else {
+            this.security = "none";
+        }
+    }
+        } else {
+    get isReality() {
+        return this.security === "reality";
+    }
+
+    set isReality(isReality) {
+        if (isReality) {
+            this.security = "reality";
+        } else {
+            this.security = "none";
+        }
+    }
             this.security = 'none';
         }
     }
@@ -549,6 +644,7 @@ class StreamSettings extends XrayCommonClass {
             HttpStreamSettings.fromJson(json.httpSettings),
             QuicStreamSettings.fromJson(json.quicSettings),
             GrpcStreamSettings.fromJson(json.grpcSettings),
+            RealityStreamSettings.fromJson(json.realitySettings),
         );
     }
 
@@ -565,6 +661,7 @@ class StreamSettings extends XrayCommonClass {
             httpSettings: network === 'http' ? this.http.toJson() : undefined,
             quicSettings: network === 'quic' ? this.quic.toJson() : undefined,
             grpcSettings: network === 'grpc' ? this.grpc.toJson() : undefined,
+            realitySettings: this.isReality ? this.reality.toJson() : undefined,
         };
     }
 }
@@ -833,6 +930,16 @@ class Inbound extends XrayCommonClass {
 
     canSetTls() {
         return this.canEnableTls();
+    }
+
+    canEnableReality() {
+        switch (this.protocol) {
+            case Protocols.VLESS:
+            case Protocols.TROJAN:
+                return true;
+            default:
+                return false;
+        }
     }
 
     canEnableXTls() {

@@ -52,6 +52,18 @@
         <a-date-picker :show-time="{ format: 'HH:mm' }" format="YYYY-MM-DD HH:mm"
                        v-model="dbInbound._expiryTime" style="width: 300px;"></a-date-picker>
     </a-form-item>
+    <a-form-item>
+        <span slot="label">
+            设备限制
+            <a-tooltip>
+                <template slot="title">
+                    限制同时在线设备数量，0 表示不限制
+                </template>
+                <a-icon type="question-circle" theme="filled"></a-icon>
+            </a-tooltip>
+        </span>
+        <a-input-number v-model="dbInbound.limitIp" :min="0"></a-input-number>
+    </a-form-item>
 </a-form>
 
 <!-- vmess settings -->

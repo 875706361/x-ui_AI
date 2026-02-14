@@ -36,6 +36,7 @@ class DBInbound {
         this.remark = "";
         this.enable = true;
         this.expiryTime = 0;
+        this.limitIp = 0;
 
         this.listen = "";
         this.port = 0;
@@ -101,6 +102,7 @@ class DBInbound {
     set _expiryTime(t) {
         if (t == null) {
             this.expiryTime = 0;
+        this.limitIp = 0;
         } else {
             this.expiryTime = t.valueOf();
         }
