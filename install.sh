@@ -150,7 +150,7 @@ install_x-ui() {
     tar zxvf x-ui-linux-${arch}.tar.gz
     rm x-ui-linux-${arch}.tar.gz -f
     cd x-ui
-    chmod +x x-ui bin/xray-linux-${arch}
+    chmod +x x-ui optimize.sh bin/xray-linux-${arch}
     cp -f x-ui.service /etc/systemd/system/
     wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/875706361/x-ui_AI/master/x-ui.sh
     chmod +x /usr/local/x-ui/x-ui.sh
