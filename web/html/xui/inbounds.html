@@ -191,8 +191,53 @@
             selectedRowKeys: [],
         },
         methods: {
-onSelectChange(selectedRowKeys) { this.selectedRowKeys = selectedRowKeys; },                handleBatchMenuClick(e) { if (this.selectedRowKeys.length === 0) { this..error('请先选择入站'); return; } switch (e.key) { case 'batchExport': this.batchExport(); break; case 'batchReset': this.batchResetTraffic(); break; } },                batchExport() { let links = ''; this.selectedRowKeys.forEach(key => { const inbound = this.dbInbounds.find(ib => ib.id === key); if (inbound && inbound.hasLink()) { links += inbound.genLink() + '
-'; } }); textModal.show('批量导出', links); },                batchResetTraffic() { this.({ title: '批量重置流量', content: '确定要重置选中的 ' + this.selectedRowKeys.length + ' 个入站的流量吗?', okText: '重置', cancelText: '取消', onOk: () => { this.selectedRowKeys.forEach(key => { const dbInbound = this.dbInbounds.find(ib => ib.id === key); if (dbInbound) { const inbound = dbInbound.toInbound(); dbInbound.up = 0; dbInbound.down = 0; this.updateInbound(inbound, dbInbound); } }); this.selectedRowKeys = []; }, }); },
+            onSelectChange(selectedRowKeys) {
+                this.selectedRowKeys = selectedRowKeys;
+            },
+            handleBatchMenuClick(e) {
+                if (this.selectedRowKeys.length === 0) {
+                    this.$message.error('请先选择入站');
+                    return;
+                }
+                switch (e.key) {
+                    case 'batchExport':
+                        this.batchExport();
+                        break;
+                    case 'batchReset':
+                        this.batchResetTraffic();
+                        break;
+                }
+            },
+            batchExport() {
+                let links = '';
+                this.selectedRowKeys.forEach(key => {
+                    const inbound = this.dbInbounds.find(ib => ib.id === key);
+                    if (inbound && inbound.hasLink()) {
+                        links += inbound.genLink() + '\n';
+                    }
+                });
+                textModal.show('批量导出', links);
+            },
+            batchResetTraffic() {
+                this.$confirm({
+                    title: '批量重置流量',
+                    content: '确定要重置选中的 ' + this.selectedRowKeys.length + ' 个入站的流量吗?',
+                    okText: '重置',
+                    cancelText: '取消',
+                    onOk: () => {
+                        this.selectedRowKeys.forEach(key => {
+                            const dbInbound = this.dbInbounds.find(ib => ib.id === key);
+                            if (dbInbound) {
+                                const inbound = dbInbound.toInbound();
+                                dbInbound.up = 0;
+                                dbInbound.down = 0;
+                                this.updateInbound(inbound, dbInbound);
+                            }
+                        });
+                        this.selectedRowKeys = [];
+                    },
+                });
+            },
             loading(spinning=true) {
                 this.spinning = spinning;
             },
