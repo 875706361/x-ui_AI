@@ -45,17 +45,17 @@
                     <a-card hoverable>
                         <div slot="title">
                             <a-button type="primary" @click="openAddInbound">添加入站</a-button>
-                            <a-dropdown>
-                                <a-button type="primary" style="margin-left: 8px">批量操作 <a-icon type="down" /></a-button>
-                                <a-menu slot="overlay" @click="handleBatchMenuClick">
-                                    <a-menu-item key="batchExport"><a-icon type="export" />批量导出</a-menu-item>
-                                    <a-menu-item key="batchReset"><a-icon type="retweet" />批量重置流量</a-menu-item>
-                                </a-menu>
-                            </a-dropdown>
+<a-dropdown>
+    <a-button type="primary" style="margin-left: 8px">批量操作 <a-icon type="down" /></a-button>
+    <a-menu slot="overlay" @click="handleBatchMenuClick">
+        <a-menu-item key="batchExport"><a-icon type="export" />批量导出</a-menu-item>
+        <a-menu-item key="batchReset"><a-icon type="retweet" />批量重置流量</a-menu-item>
+    </a-menu>
+</a-dropdown>
                         </div>
+<!--                        <a-input v-model="searchKey" placeholder="搜索" autofocus style="max-width: 300px"></a-input>-->
                         <a-table :columns="columns" :row-key="dbInbound => dbInbound.id"
-                                 :data-source="dbInbounds"
-                                 :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }"
+                                 :data-source="dbInbounds" :row-selection="{ selectedRowKeys: selectedRowKeys, onChange: onSelectChange }"
                                  :loading="spinning" :scroll="{ x: 1500 }"
                                  :pagination="false"
                                  style="margin-top: 20px"
@@ -122,13 +122,6 @@
                 </transition>
             </a-spin>
         </a-layout-content>
-        
-        <a-modal id="inbound-modal" v-model="inModal.visible" :title="inModal.title" @ok="inModalOk"
-                 :confirm-loading="inModal.confirmLoading" :closable="true" :mask-closable="false"
-                 :ok-text="inModal.okText" cancel-text='{{ i18n "close" }}'>
-            {{template "form/inbound"}}
-        </a-modal>
-        
     </a-layout>
 </a-layout>
 {{template "js" .}}
@@ -196,107 +189,10 @@
             dbInbounds: [],
             searchKey: '',
             selectedRowKeys: [],
-            inModal: {
-                title: '',
-                visible: false,
-                confirmLoading: false,
-                okText: '确定',
-                confirm: null,
-                inbound: new Inbound(),
-                dbInbound: new DBInbound(),
-            },
-            Protocols: {
-                VMESS: Protocols.VMESS,
-                VLESS: Protocols.VLESS,
-                TROJAN: Protocols.TROJAN,
-                SHADOWSOCKS: Protocols.SHADOWSOCKS,
-                DOKODEMO: Protocols.DOKODEMO,
-                SOCKS: Protocols.SOCKS,
-                HTTP: Protocols.HTTP,
-            },
-            SSMethods: SSMethods,
-        },
-        computed: {
-            total() {
-                let down = 0, up = 0;
-                for (let i = 0; i < this.dbInbounds.length; ++i) {
-                    down += this.dbInbounds[i].down;
-                    up += this.dbInbounds[i].up;
-                }
-                return {
-                    down: down,
-                    up: up,
-                };
-            },
-            inbound: {
-                get() { return this.inModal.inbound; },
-                set(v) { this.inModal.inbound = v; }
-            },
-            dbInbound: {
-                get() { return this.inModal.dbInbound; },
-                set(v) { this.inModal.dbInbound = v; }
-            }
-        },
-        created() {
-            this.inModal.loading = (loading) => {
-                this.inModal.confirmLoading = loading;
-            };
-            this.inModal.close = () => {
-                this.inModal.visible = false;
-                this.inModal.confirmLoading = false;
-            };
-        },
-        mounted() {
-            this.getDBInbounds();
         },
         methods: {
-            onSelectChange(selectedRowKeys) {
-                this.selectedRowKeys = selectedRowKeys;
-            },
-            handleBatchMenuClick(e) {
-                if (this.selectedRowKeys.length === 0) {
-                    this.$message.error('请先选择入站');
-                    return;
-                }
-                switch (e.key) {
-                    case 'batchExport':
-                        this.batchExport();
-                        break;
-                    case 'batchReset':
-                        this.batchResetTraffic();
-                        break;
-                }
-            },
-            batchExport() {
-                let links = '';
-                this.selectedRowKeys.forEach(key => {
-                    const inbound = this.dbInbounds.find(ib => ib.id === key);
-                    if (inbound && inbound.hasLink()) {
-                        links += inbound.genLink() + '\n';
-                    }
-                });
-                textModal.show('批量导出', links);
-            },
-            batchResetTraffic() {
-                this.$confirm({
-                    title: '批量重置流量',
-                    content: '确定要重置选中的 ' + this.selectedRowKeys.length + ' 个入站的流量吗?',
-                    okText: '重置',
-                    cancelText: '取消',
-                    onOk: () => {
-                        this.selectedRowKeys.forEach(key => {
-                            const dbInbound = this.dbInbounds.find(ib => ib.id === key);
-                            if (dbInbound) {
-                                const inbound = dbInbound.toInbound();
-                                dbInbound.up = 0;
-                                dbInbound.down = 0;
-                                this.updateInbound(inbound, dbInbound);
-                            }
-                        });
-                        this.selectedRowKeys = [];
-                    },
-                });
-            },
+onSelectChange(selectedRowKeys) { this.selectedRowKeys = selectedRowKeys; },                handleBatchMenuClick(e) { if (this.selectedRowKeys.length === 0) { this..error('请先选择入站'); return; } switch (e.key) { case 'batchExport': this.batchExport(); break; case 'batchReset': this.batchResetTraffic(); break; } },                batchExport() { let links = ''; this.selectedRowKeys.forEach(key => { const inbound = this.dbInbounds.find(ib => ib.id === key); if (inbound && inbound.hasLink()) { links += inbound.genLink() + '
+'; } }); textModal.show('批量导出', links); },                batchResetTraffic() { this.({ title: '批量重置流量', content: '确定要重置选中的 ' + this.selectedRowKeys.length + ' 个入站的流量吗?', okText: '重置', cancelText: '取消', onOk: () => { this.selectedRowKeys.forEach(key => { const dbInbound = this.dbInbounds.find(ib => ib.id === key); if (dbInbound) { const inbound = dbInbound.toInbound(); dbInbound.up = 0; dbInbound.down = 0; this.updateInbound(inbound, dbInbound); } }); this.selectedRowKeys = []; }, }); },
             loading(spinning=true) {
                 this.spinning = spinning;
             },
@@ -346,47 +242,28 @@
                         break;
                 }
             },
-            inModalOk() {
-                ObjectUtil.execute(this.inModal.confirm, this.inModal.inbound, this.inModal.dbInbound);
-            },
-            showInModal({ title='', okText='确定', inbound=null, dbInbound=null, confirm=(inbound, dbInbound)=>{} }) {
-                this.inModal.title = title;
-                this.inModal.okText = okText;
-                if (inbound) {
-                    this.inModal.inbound = Inbound.fromJson(inbound.toJson());
-                } else {
-                    this.inModal.inbound = new Inbound();
-                }
-                if (dbInbound) {
-                    this.inModal.dbInbound = new DBInbound(dbInbound);
-                } else {
-                    this.inModal.dbInbound = new DBInbound();
-                }
-                this.inModal.confirm = confirm;
-                this.inModal.visible = true;
-            },
             openAddInbound() {
-                this.showInModal({
+                inModal.show({
                     title: '添加入站',
                     okText: '添加',
                     confirm: async (inbound, dbInbound) => {
-                        this.inModal.loading(true);
+                        inModal.loading();
                         await this.addInbound(inbound, dbInbound);
-                        this.inModal.close();
+                        inModal.close();
                     }
                 });
             },
             openEditInbound(dbInbound) {
                 const inbound = dbInbound.toInbound();
-                this.showInModal({
+                inModal.show({
                     title: '修改入站',
                     okText: '修改',
                     inbound: inbound,
                     dbInbound: dbInbound,
                     confirm: async (inbound, dbInbound) => {
-                        this.inModal.loading(true);
+                        inModal.loading();
                         await this.updateInbound(inbound, dbInbound);
-                        this.inModal.close();
+                        inModal.close();
                     }
                 });
             },
@@ -398,7 +275,6 @@
                     remark: dbInbound.remark,
                     enable: dbInbound.enable,
                     expiryTime: dbInbound.expiryTime,
-                    limitIp: dbInbound.limitIp,
 
                     listen: inbound.listen,
                     port: inbound.port,
@@ -407,7 +283,7 @@
                     streamSettings: inbound.stream.toString(),
                     sniffing: inbound.canSniffing() ? inbound.sniffing.toString() : '{}',
                 };
-                await this.submit('/xui/inbound/add', data, this.inModal);
+                await this.submit('/xui/inbound/add', data, inModal);
             },
             async updateInbound(inbound, dbInbound) {
                 const data = {
@@ -417,7 +293,6 @@
                     remark: dbInbound.remark,
                     enable: dbInbound.enable,
                     expiryTime: dbInbound.expiryTime,
-                    limitIp: dbInbound.limitIp,
 
                     listen: inbound.listen,
                     port: inbound.port,
@@ -426,7 +301,7 @@
                     streamSettings: inbound.stream.toString(),
                     sniffing: inbound.canSniffing() ? inbound.sniffing.toString() : '{}',
                 };
-                await this.submit(`/xui/inbound/update/${dbInbound.id}`, data, this.inModal);
+                await this.submit(`/xui/inbound/update/${dbInbound.id}`, data, inModal);
             },
             resetTraffic(dbInbound) {
                 this.$confirm({
@@ -467,20 +342,32 @@
                     await this.getDBInbounds();
                 }
             },
-            streamNetworkChange(oldValue) {
-                if (oldValue === 'kcp') {
-                    this.inModal.inbound.tls = false;
-                }
-            }
         },
         watch: {
             searchKey(value) {
                 this.searchInbounds(value);
             }
         },
+        mounted() {
+            this.getDBInbounds();
+        },
+        computed: {
+            total() {
+                let down = 0, up = 0;
+                for (let i = 0; i < this.dbInbounds.length; ++i) {
+                    down += this.dbInbounds[i].down;
+                    up += this.dbInbounds[i].up;
+                }
+                return {
+                    down: down,
+                    up: up,
+                };
+            }
+        },
     });
 
 </script>
+{{template "inboundModal"}}
 {{template "promptModal"}}
 {{template "qrcodeModal"}}
 {{template "textModal"}}
