@@ -119,6 +119,21 @@
                     await this.getAllSetting();
                 }
             },
+            checkSettingChange() {
+                this.saveBtnDisable = this.oldAllSetting.equals(this.allSetting);
+            },
+            // 防抖函数实现
+            debounce(func, wait) {
+                let timeout;
+                return function executedFunction(...args) {
+                    const later = () => {
+                        clearTimeout(timeout);
+                        func(...args);
+                    };
+                    clearTimeout(timeout);
+                    timeout = setTimeout(later, wait);
+                };
+            },
             async updateUser() {
                 this.loading(true);
                 const msg = await HttpUtil.post("/xui/setting/updateUser", this.user);
@@ -149,11 +164,31 @@
         },
         async mounted() {
             await this.getAllSetting();
-            while (true) {
-                await PromiseUtil.sleep(1000);
-                this.saveBtnDisable = this.oldAllSetting.equals(this.allSetting);
-            }
+            // 使用事件监听代替无限循环，减少CPU占用
+            this.setupSettingWatcher();
+            
+            // 初始化防抖函数（500ms延迟）
+            this.debouncedCheckSettingChange = this.debounce(this.checkSettingChange, 500);
         },
+        beforeDestroy() {
+            // 清理事件监听
+            this.clearSettingWatcher();
+        },
+        methods: {
+            setupSettingWatcher() {
+                // 监听设置变化，使用防抖函数减少检查频率
+                this.settingWatcher = this.$watch('allSetting', () => {
+                    this.debouncedCheckSettingChange();
+                }, { deep: true });
+            },
+            clearSettingWatcher() {
+                if (this.settingWatcher) {
+                    this.settingWatcher();
+                    this.settingWatcher = null;
+                }
+            },
+            debouncedCheckSettingChange: null, // 将在mounted中初始化
+        }
     });
 
 </script>

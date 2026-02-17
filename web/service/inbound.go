@@ -151,14 +151,27 @@ func (s *InboundService) AddTraffic(traffics []*xray.Traffic) (err error) {
 			tx.Commit()
 		}
 	}()
-	for _, traffic := range traffics {
-		if traffic.IsInbound {
-			err = tx.Where("tag = ?", traffic.Tag).
-				UpdateColumn("up", gorm.Expr("up + ?", traffic.Up)).
-				UpdateColumn("down", gorm.Expr("down + ?", traffic.Down)).
-				Error
-			if err != nil {
-				return
+	// 批量处理，减少数据库操作次数
+	batchSize := 50
+	for i := 0; i < len(traffics); i += batchSize {
+		end := i + batchSize
+		if end > len(traffics) {
+			end = len(traffics)
+		}
+		
+		batch := traffics[i:end]
+		for _, traffic := range batch {
+			if traffic.IsInbound {
+				err = tx.Where("tag = ?", traffic.Tag).\
+					UpdateColumn("up", gorm.Expr("up + ?", traffic.Up)).\
+					UpdateColumn("down", gorm.Expr("down + ?", traffic.Down)).\
+					Error
+				if err != nil {
+					return
+				}
+			}
+		}
+	}
 			}
 		}
 	}
