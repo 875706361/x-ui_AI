@@ -169,8 +169,7 @@ install_x-ui() {
     wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${SCRIPT_REPO}/main/x-ui.sh
     chmod +x /usr/local/x-ui/x-ui.sh
     chmod +x /usr/bin/x-ui
-    # 临时禁用自动配置，测试时手动设置
-    # config_after_install
+    config_after_install
     systemctl daemon-reload
     systemctl enable x-ui
     systemctl start x-ui
