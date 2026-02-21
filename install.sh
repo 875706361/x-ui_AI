@@ -203,19 +203,19 @@ uninstall_x-ui() {
 # 主程序
 if [[ $# == 0 ]]; then
     install_base
-    install_x-ui 0
+    install_x-ui
 else
     case $1 in
     install)
         install_base
-        install_x-ui 0
+        install_x-ui
         ;;
     uninstall)
-        uninstall_x-ui 0
+        uninstall_x-ui
         ;;
     update)
         install_base
-        install_x-ui 0
+        install_x-ui
         ;;
     *)
         echo -e "${red}unknown parameter:$1${plain}"
