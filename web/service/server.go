@@ -78,79 +78,225 @@ func (s *ServerService) GetStatus(lastStatus *Status) *Status {
 		T: now,
 	}
 
-	percents, err := cpu.Percent(0, false)
-	if err != nil {
-		logger.Warning("get cpu percent failed:", err)
-	} else {
-		status.Cpu = percents[0]
-	}
-
-	upTime, err := host.Uptime()
-	if err != nil {
-		logger.Warning("get uptime failed:", err)
-	} else {
-		status.Uptime = upTime
-	}
-
-	memInfo, err := mem.VirtualMemory()
-	if err != nil {
-		logger.Warning("get virtual memory failed:", err)
-	} else {
-		status.Mem.Current = memInfo.Used
-		status.Mem.Total = memInfo.Total
-	}
-
-	swapInfo, err := mem.SwapMemory()
-	if err != nil {
-		logger.Warning("get swap memory failed:", err)
-	} else {
-		status.Swap.Current = swapInfo.Used
-		status.Swap.Total = swapInfo.Total
-	}
-
-	distInfo, err := disk.Usage("/")
-	if err != nil {
-		logger.Warning("get dist usage failed:", err)
-	} else {
-		status.Disk.Current = distInfo.Used
-		status.Disk.Total = distInfo.Total
-	}
-
-	avgState, err := load.Avg()
-	if err != nil {
-		logger.Warning("get load avg failed:", err)
-	} else {
-		status.Loads = []float64{avgState.Load1, avgState.Load5, avgState.Load15}
-	}
-
-	ioStats, err := net.IOCounters(false)
-	if err != nil {
-		logger.Warning("get io counters failed:", err)
-	} else if len(ioStats) > 0 {
-		ioStat := ioStats[0]
-		status.NetTraffic.Sent = ioStat.BytesSent
-		status.NetTraffic.Recv = ioStat.BytesRecv
-
-		if lastStatus != nil {
-			duration := now.Sub(lastStatus.T)
-			seconds := float64(duration) / float64(time.Second)
-			up := uint64(float64(status.NetTraffic.Sent-lastStatus.NetTraffic.Sent) / seconds)
-			down := uint64(float64(status.NetTraffic.Recv-lastStatus.NetTraffic.Recv) / seconds)
-			status.NetIO.Up = up
-			status.NetIO.Down = down
+	// CPU - 设置超时，避免卡住
+	cpuDone := make(chan []float64, 1)
+	go func() {
+		percents, err := cpu.Percent(0, false)
+		if err == nil {
+			cpuDone <- percents
+		} else {
+			cpuDone <- nil
 		}
-	} else {
-		logger.Warning("can not find io counters")
+	}()
+	select {
+	case percents := <-cpuDone:
+		if percents != nil {
+			status.Cpu = percents[0]
+		}
+	case <-time.After(3 * time.Second):
+		logger.Warning("get cpu percent timeout")
 	}
 
-	status.TcpCount, err = sys.GetTCPCount()
-	if err != nil {
-		logger.Warning("get tcp connections failed:", err)
+	// Uptime - 设置超时
+	uptimeDone := make(chan uint64, 1)
+	go func() {
+		upTime, err := host.Uptime()
+		if err == nil {
+			uptimeDone <- upTime
+		} else {
+			uptimeDone <- 0
+		}
+	}()
+	select {
+	case upTime := <-uptimeDone:
+		status.Uptime = upTime
+	case <-time.After(2 * time.Second):
+		logger.Warning("get uptime timeout")
 	}
 
-	status.UdpCount, err = sys.GetUDPCount()
-	if err != nil {
-		logger.Warning("get udp connections failed:", err)
+	// Memory - 设置超时
+	memDone := make(chan struct {
+		info *mem.VirtualMemoryStat
+		err  error
+	}, 1)
+	go func() {
+		memInfo, err := mem.VirtualMemory()
+		memDone <- struct {
+			info *mem.VirtualMemoryStat
+			err  error
+		}{memInfo, err}
+	}()
+	select {
+	case result := <-memDone:
+		if result.err == nil {
+			status.Mem.Current = result.info.Used
+			status.Mem.Total = result.info.Total
+		} else {
+			logger.Warning("get virtual memory failed:", result.err)
+		}
+	case <-time.After(2 * time.Second):
+		logger.Warning("get virtual memory timeout")
+	}
+
+	// Swap - 设置超时
+	swapDone := make(chan struct {
+		info *mem.SwapMemoryStat
+		err  error
+	}, 1)
+	go func() {
+		swapInfo, err := mem.SwapMemory()
+		swapDone <- struct {
+			info *mem.SwapMemoryStat
+			err  error
+		}{swapInfo, err}
+	}()
+	select {
+	case result := <-swapDone:
+		if result.err == nil {
+			status.Swap.Current = result.info.Used
+			status.Swap.Total = result.info.Total
+		} else {
+			logger.Warning("get swap memory failed:", result.err)
+		}
+	case <-time.After(2 * time.Second):
+		logger.Warning("get swap memory timeout")
+	}
+
+	// Disk - 设置超时
+	diskDone := make(chan struct {
+		info *disk.UsageStat
+		err  error
+	}, 1)
+	go func() {
+		distInfo, err := disk.Usage("/")
+		diskDone <- struct {
+			info *disk.UsageStat
+			err  error
+		}{distInfo, err}
+	}()
+	select {
+	case result := <-diskDone:
+		if result.err == nil {
+			status.Disk.Current = result.info.Used
+			status.Disk.Total = result.info.Total
+		} else {
+			logger.Warning("get dist usage failed:", result.err)
+		}
+	case <-time.After(2 * time.Second):
+		logger.Warning("get dist usage timeout")
+	}
+
+	// Load avg - 设置超时
+	loadDone := make(chan struct {
+		info *load.AvgStat
+		err  error
+	}, 1)
+	go func() {
+		avgState, err := load.Avg()
+		loadDone <- struct {
+			info *load.AvgStat
+			err  error
+		}{avgState, err}
+	}()
+	select {
+	case result := <-loadDone:
+		if result.err == nil {
+			status.Loads = []float64{result.info.Load1, result.info.Load5, result.info.Load15}
+		} else {
+			logger.Warning("get load avg failed:", result.err)
+		}
+	case <-time.After(2 * time.Second):
+		logger.Warning("get load avg timeout")
+	}
+
+	// Network stats - 设置超时
+	netDone := make(chan struct {
+		sent uint64
+		recv uint64
+		err  error
+	}, 1)
+	go func() {
+		ioStats, err := net.IOCounters(false)
+		if err == nil && len(ioStats) > 0 {
+			ioStat := ioStats[0]
+			netDone <- struct {
+				sent uint64
+				recv uint64
+				err  error
+			}{ioStat.BytesSent, ioStat.BytesRecv, nil}
+		} else {
+			netDone <- struct {
+				sent uint64
+				recv uint64
+				err  error
+			}{0, 0, err}
+		}
+	}()
+	select {
+	case result := <-netDone:
+		if result.err == nil {
+			status.NetTraffic.Sent = result.sent
+			status.NetTraffic.Recv = result.recv
+			if lastStatus != nil {
+				duration := now.Sub(lastStatus.T)
+				seconds := float64(duration) / float64(time.Second)
+				up := uint64(float64(status.NetTraffic.Sent-lastStatus.NetTraffic.Sent) / seconds)
+				down := uint64(float64(status.NetTraffic.Recv-lastStatus.NetTraffic.Recv) / seconds)
+				status.NetIO.Up = up
+				status.NetIO.Down = down
+			}
+		} else {
+			logger.Warning("get io counters failed:", result.err)
+		}
+	case <-time.After(2 * time.Second):
+		logger.Warning("get io counters timeout")
+	}
+
+	// TCP/UDP连接统计 - 使用带超时的获取
+	tcpDone := make(chan struct {
+		count int
+		err   error
+	}, 1)
+	go func() {
+		count, err := sys.GetTCPCount()
+		tcpDone <- struct {
+			count int
+			err   error
+		}{count, err}
+	}()
+
+	udpDone := make(chan struct {
+		count int
+		err   error
+	}, 1)
+	go func() {
+		count, err := sys.GetUDPCount()
+		udpDone <- struct {
+			count int
+			err   error
+		}{count, err}
+	}()
+
+	// 等待TCP统计，最多等待2秒
+	select {
+	case result := <-tcpDone:
+		status.TcpCount = result.count
+		if result.err != nil {
+			logger.Warning("get tcp connections failed:", result.err)
+		}
+	case <-time.After(2 * time.Second):
+		logger.Warning("get tcp connections timeout")
+	}
+
+	// 等待UDP统计，最多等待2秒
+	select {
+	case result := <-udpDone:
+		status.UdpCount = result.count
+		if result.err != nil {
+			logger.Warning("get udp connections failed:", result.err)
+		}
+	case <-time.After(2 * time.Second):
+		logger.Warning("get udp connections timeout")
 	}
 
 	if s.xrayService.IsXrayRunning() {

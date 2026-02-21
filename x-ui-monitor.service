@@ -1,0 +1,12 @@
+[Unit]
+Description=x-ui Resource Monitor
+After=network.target x-ui.service
+
+[Service]
+Type=simple
+ExecStart=/root/CLAY/x-ui/monitor.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
