@@ -1,158 +1,225 @@
 #!/bin/bash
 
-# x-ui 安装与优化脚本
-# 解决 CPU 满载问题并自动安装所需依赖
+# x-ui 安装脚本
+# 原版修改：从 875706361/x-ui_AI 仓库下载安装
 
 set -e
 
 # 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+red='\033[0;31m'
+green='\033[0;32m'
+yellow='\033[1;33m'
+plain='\033[0m'
 
-# 配置
-INSTALL_DIR="/root/CLAY/x-ui"
-BINARY_NAME="x-ui"
-SERVICE_NAME="x-ui"
+# 仓库配置
+GITHUB_REPO="875706361/x-ui_AI"
+DOWNLOAD_BASE="https://github.com/${GITHUB_REPO}/releases/download"
 
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}   x-ui 安装与优化脚本${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
+# 检查 root
+[[ $EUID -ne 0 ]] && echo -e "${red}Fatal error:${plain}please run this script with root privilege\n" && exit 1
 
-# 检查是否为 root 用户
-if [ "$EUID" -ne 0 ]; then
-    echo -e "${RED}错误: 请使用 root 用户运行此脚本${NC}"
-    exit 1
-fi
-
-# 检查 Go 是否安装
-echo -e "${YELLOW}[1/7] 检查 Go 环境...${NC}"
-if ! command -v go &> /dev/null; then
-    echo -e "${YELLOW}   Go 未安装，正在安装 Go 1.21.6...${NC}"
-    cd /tmp
-    wget -q https://go.dev/dl/go1.21.6.linux-amd64.tar.gz -O go.tar.gz
-    rm -rf /usr/local/go
-    tar -C /usr/local -xzf go.tar.gz
-    rm -f go.tar.gz
-    echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
-    export PATH=$PATH:/usr/local/go/bin
-    echo -e "${GREEN}   Go 安装成功${NC}"
+# 检测系统
+if [[ -f /etc/redhat-release ]]; then
+    release="centos"
+elif cat /etc/issue | grep -Eqi "debian"; then
+    release="debian"
+elif cat /etc/issue | grep -Eqi "ubuntu"; then
+    release="ubuntu"
+elif cat /etc/issue | grep -Eqi "centos|red hat|redhat"; then
+    release="centos"
+elif cat /proc/version | grep -Eqi "debian"; then
+    release="debian"
+elif cat /proc/version | grep -Eqi "ubuntu"; then
+    release="ubuntu"
+elif cat /proc/version | grep -Eqi "centos|red hat|redhat"; then
+    release="centos"
 else
-    GO_VERSION=$(go version | awk '{print $3}')
-    echo -e "${GREEN}   Go 已安装: ${GO_VERSION}${NC}"
+    echo -e "${red}check system os failed,please contact with author!${plain}\n" && exit 1
 fi
 
-# 安装系统依赖
-echo ""
-echo -e "${YELLOW}[2/7] 安装系统依赖...${NC}"
-if command -v apt-get &> /dev/null; then
-    apt-get update -qq
-    apt-get install -y -qq wget curl unzip build-essential bc 2>/dev/null || true
-elif command -v yum &> /dev/null; then
-    yum install -y -q wget curl unzip gcc make bc 2>/dev/null || true
-fi
-echo -e "${GREEN}   系统依赖安装完成${NC}"
+arch=$(arch)
 
-# 编译项目
-echo ""
-echo -e "${YELLOW}[3/7] 编译 x-ui 项目...${NC}"
-cd "$INSTALL_DIR"
-if [ -f "go.mod" ]; then
-    echo "   下载依赖..."
-    go mod download
-    echo "   编译中..."
-    CGO_ENABLED=0 go build -o x-ui main.go
-    chmod +x x-ui
-    echo -e "${GREEN}   编译成功: $(du -h x-ui | cut -f1)${NC}"
+if [[ $arch == "x86_64" || $arch == "x64" || $arch == "amd64" ]]; then
+    arch="amd64"
+elif [[ $arch == "aarch64" || $arch == "arm64" ]]; then
+    arch="arm64"
 else
-    echo -e "${RED}   错误: 未找到 go.mod 文件${NC}"
-    exit 1
+    arch="amd64"
+    echo -e "${red}fail to check system arch,will use default arch here: ${arch}${plain}"
 fi
 
-# 停止现有服务
-echo ""
-echo -e "${YELLOW}[4/7] 停止现有服务...${NC}"
-if systemctl is-active --quiet x-ui 2>/dev/null; then
+echo "架构: ${arch}"
+
+# 检测系统版本
+os_version=""
+if [[ -f /etc/os-release ]]; then
+    os_version=$(awk -F'[= ."]' '/VERSION_ID/{print $3}' /etc/os-release)
+fi
+if [[ -z "$os_version" && -f /etc/lsb-release ]]; then
+    os_version=$(awk -F'[= ."]+' '/DISTRIB_RELEASE/{print $2}' /etc/lsb-release)
+fi
+
+if [[ x"${release}" == x"centos" ]]; then
+    if [[ ${os_version} -le 6 ]]; then
+        echo -e "${red}please use CentOS 7 or higher version${plain}\n" && exit 1
+    fi
+elif [[ x"${release}" == x"ubuntu" ]]; then
+    if [[ ${os_version} -lt 16 ]]; then
+        echo -e "${red}please use Ubuntu 16 or higher version${plain}\n" && exit 1
+    fi
+elif [[ x"${release}" == x"debian" ]]; then
+    if [[ ${os_version} -lt 8 ]]; then
+        echo -e "${red}please use Debian 8 or higher version${plain}\n" && exit 1
+    fi
+fi
+
+# 安装基础依赖
+install_base() {
+    if [[ x"${release}" == x"centos" ]]; then
+        yum install wget curl tar -y
+    else
+        apt install wget curl tar -y
+    fi
+}
+
+# 安装后配置
+config_after_install() {
+    echo -e "${yellow}Install/update finished need to modify panel settings out of security${plain}"
+    read -p "are you continue,if you type n will skip this at this time[y/n]": config_confirm
+    if [[ x"${config_confirm}" == x"y" || x"${config_confirm}" == x"Y" ]]; then
+        read -p "please set up your username:" config_account
+        echo -e "${yellow}your username will be:${config_account}${plain}"
+        read -p "please set up your password:" config_password
+        echo -e "${yellow}your password will be:${config_password}${plain}"
+        read -p "please set up the panel port:" config_port
+        echo -e "${yellow}your panel port is:${config_port}${plain}"
+        echo -e "${yellow}initializing,wait some time here...${plain}"
+        /usr/local/x-ui/x-ui setting -username ${config_account} -password ${config_password}
+        echo -e "${yellow}account name and password set down!${plain}"
+        /usr/local/x-ui/x-ui setting -port ${config_port}
+        echo -e "${yellow}panel port set down!${plain}"
+    else
+        echo -e "${red}cancel...${plain}"
+        if [[ ! -f "/etc/x-ui/x-ui.db" ]]; then
+            local usernameTemp=$(head -c 6 /dev/urandom | base64)
+            local passwordTemp=$(head -c 6 /dev/urandom | base64)
+            local portTemp=$(echo $RANDOM)
+            /usr/local/x-ui/x-ui setting -username ${usernameTemp} -password ${passwordTemp}
+            /usr/local/x-ui/x-ui setting -port ${portTemp}
+            echo -e "this is a fresh installation,will generate random login info for security concerns:"
+            echo -e "###############################################"
+            echo -e "${green}user name:${usernameTemp}${plain}"
+            echo -e "${green}user password:${passwordTemp}${plain}"
+            echo -e "${red}web port:${portTemp}${plain}"
+            echo -e "###############################################"
+            echo -e "${red}if you forgot your login info,you can type x-ui and then type 7 to check after installation${plain}"
+        else
+            echo -e "${red} this is your upgrade,will keep old settings,if you forgot your login info,you can type x-ui and then type 7 to check${plain}"
+        fi
+    fi
+}
+
+# 安装 x-ui
+install_x-ui() {
     systemctl stop x-ui
-    echo -e "${GREEN}   服务已停止${NC}"
+    cd /usr/local/
+
+    if [ $# == 0 ]; then
+        # 获取最新版本
+        last_version=$(curl -Ls "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [[ ! -n "$last_version" ]]; then
+            echo -e "${red}refresh x-ui version failed,it may due to Github API restriction,please try it later${plain}"
+            exit 1
+        fi
+        echo -e "get x-ui latest version succeed:${last_version},begin to install..."
+        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${DOWNLOAD_BASE}/${last_version}/x-ui-v1.0.0-cpu-optimized-linux-${arch}.tar.gz
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}download x-ui failed,please be sure that your server can access Github${plain}"
+            exit 1
+        fi
+    else
+        last_version=$1
+        url="${DOWNLOAD_BASE}/${last_version}/x-ui-v1.0.0-cpu-optimized-linux-${arch}.tar.gz"
+        echo -e "begin to install x-ui v$1 ..."
+        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${url}
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}download x-ui v$1 failed,please check the version exists${plain}"
+            exit 1
+        fi
+    fi
+
+    if [[ -e /usr/local/x-ui/ ]]; then
+        rm /usr/local/x-ui/ -rf
+    fi
+
+    tar zxvf x-ui-linux-${arch}.tar.gz
+    rm x-ui-linux-${arch}.tar.gz -f
+    cd x-ui
+    chmod +x x-ui bin/xray-linux-${arch}
+    cp -f x-ui.service /etc/systemd/system/ 2>/dev/null || true
+    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.sh
+    chmod +x /usr/local/x-ui/x-ui.sh
+    chmod +x /usr/bin/x-ui
+    config_after_install
+    systemctl daemon-reload
+    systemctl enable x-ui
+    systemctl start x-ui
+    echo -e "${green}x-ui v${last_version}${plain} install finished,it is working now..."
+    echo -e ""
+    echo -e "x-ui control menu usages: "
+    echo -e "----------------------------------------------"
+    echo -e "x-ui              - Enter     control menu"
+    echo -e "x-ui start        - Start     x-ui "
+    echo -e "x-ui stop         - Stop      x-ui "
+    echo -e "x-ui restart      - Restart   x-ui "
+    echo -e "x-ui enable       - Enable    x-ui on boot"
+    echo -e "x-ui disable      - Disable   x-ui on boot"
+    echo -e "x-ui log          - Show      x-ui logs"
+    echo -e "x-ui update       - Update    x-ui"
+    echo -e "x-ui install      - Install   x-ui"
+    echo -e "x-ui uninstall    - Uninstall x-ui"
+    echo -e "----------------------------------------------"
+}
+
+# 卸载 x-ui
+echo_brick_red() {
+    echo -e "\033[1;38;5;196m$1\033[0m"
+}
+
+uninstall_x-ui() {
+    systemctl stop x-ui
+    systemctl disable x-ui
+    rm /etc/systemd/system/x-ui.service -f
+    systemctl daemon-reload
+    systemctl reset-failed
+    rm /etc/x-ui/ -rf
+    rm /usr/local/x-ui/ -rf
+    rm /usr/bin/x-ui -f
+    echo ""
+    echo_brick_red "Uninstall x-ui and its config done,please exit this terminal and re-login to take effect!"
+    echo ""
+}
+
+# 主程序
+if [[ $# == 0 ]]; then
+    install_base
+    install_x-ui 0
 else
-    echo -e "${YELLOW}   服务未运行${NC}"
+    case $1 in
+    install)
+        install_base
+        install_x-ui 0
+        ;;
+    uninstall)
+        uninstall_x-ui 0
+        ;;
+    update)
+        install_base
+        install_x-ui 0
+        ;;
+    *)
+        echo -e "${red}unknown parameter:$1${plain}"
+        exit 1
+        ;;
+    esac
 fi
-
-# 创建优化的 systemd 服务文件
-echo ""
-echo -e "${YELLOW}[5/7] 配置 systemd 服务...${NC}"
-cat > /etc/systemd/system/x-ui.service << 'EOF'
-[Unit]
-Description=x-ui Service
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=/root/CLAY/x-ui
-ExecStart=/root/CLAY/x-ui/x-ui
-
-# 资源限制 - 防止 CPU 满载
-CPUQuota=200%      # 最多使用 2 个 CPU 核心
-MemoryMax=1G       # 最大内存限制 1GB
-LimitNOFILE=65536  # 文件描述符限制
-
-# 安全设置
-PrivateTmp=true
-NoNewPrivileges=true
-ProtectSystem=true
-ProtectHome=true
-
-# 重启策略
-Restart=always
-RestartSec=10
-StartLimitInterval=60
-StartLimitBurst=3
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload
-echo -e "${GREEN}   服务配置完成 (CPU 限制: 200%, 内存: 1GB)${NC}"
-
-# 启用并启动服务
-echo ""
-echo -e "${YELLOW}[6/7] 启动 x-ui 服务...${NC}"
-systemctl enable x-ui
-systemctl start x-ui
-sleep 3
-
-if systemctl is-active --quiet x-ui; then
-    echo -e "${GREEN}   服务启动成功!${NC}"
-else
-    echo -e "${RED}   服务启动失败，请检查日志: journalctl -u x-ui${NC}"
-    exit 1
-fi
-
-# 显示服务状态
-echo ""
-echo -e "${YELLOW}[7/7] 服务状态...${NC}"
-systemctl status x-ui --no-pager -l | head -n 15
-
-echo ""
-echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}   安装完成!${NC}"
-echo -e "${GREEN}========================================${NC}"
-echo ""
-echo -e "常用命令:"
-echo -e "  启动服务:   systemctl start x-ui"
-echo -e "  停止服务:   systemctl stop x-ui"
-echo -e "  重启服务:   systemctl restart x-ui"
-echo -e "  查看状态:   systemctl status x-ui"
-echo -e "  查看日志:   journalctl -u x-ui -f"
-echo ""
-echo -e "${YELLOW}优化说明:${NC}"
-echo -e "  1. 添加了系统资源限制 (CPU 200%, 内存 1GB)"
-echo -e "  2. 添加了所有系统调用的超时机制"
-echo -e "  3. 添加了 TCP/UDP 连接数统计缓存 (5秒)"
-echo -e "  4. 添加了日志警告抑制机制 (30秒)"
-echo -e "  5. 添加了大文件读取保护 (>1MB 不完整读取)"
-echo ""
