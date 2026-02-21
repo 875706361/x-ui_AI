@@ -121,7 +121,7 @@ config_after_install() {
 
 # 安装 x-ui
 install_x-ui() {
-    systemctl stop x-ui
+    systemctl stop x-ui 2>/dev/null || true
     cd /usr/local/
 
     if [ $# == 0 ]; then
