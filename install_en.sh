@@ -160,10 +160,10 @@ install_x-ui() {
     mkdir -p bin
     mv xray-linux-${arch} bin/
     # Download service file from repo
-    wget --no-check-certificate -O /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.service
+    wget --no-check-certificate -O /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/${GITHUB_REPO}/main/x-ui.service
     # Download management script from repo
-    wget --no-check-certificate -O /usr/local/x-ui/x-ui_en.sh https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui_en.sh
-    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui_en.sh
+    wget --no-check-certificate -O /usr/local/x-ui/x-ui_en.sh https://raw.githubusercontent.com/${GITHUB_REPO}/main/x-ui_en.sh
+    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/main/x-ui_en.sh
     chmod +x /usr/local/x-ui/x-ui_en.sh
     chmod +x /usr/bin/x-ui
     config_after_install
