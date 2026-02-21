@@ -152,9 +152,10 @@ install_x-ui() {
         rm /usr/local/x-ui/ -rf
     fi
 
-    tar zxvf x-ui-linux-${arch}.tar.gz
+    mkdir -p /usr/local/x-ui
+    tar zxvf x-ui-linux-${arch}.tar.gz -C /usr/local/x-ui
     rm x-ui-linux-${arch}.tar.gz -f
-    cd x-ui
+    cd /usr/local/x-ui
     chmod +x x-ui bin/xray-linux-${arch}
     cp -f x-ui.service /etc/systemd/system/ 2>/dev/null || true
     wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.sh
