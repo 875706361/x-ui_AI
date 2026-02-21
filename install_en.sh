@@ -8,10 +8,8 @@ yellow='\033[0;33m'
 plain='\033[0m'
 
 # 仓库配置
-# 官方发布仓库（用于下载压缩包）
-RELEASE_REPO="FranzKafkaYu/x-ui"
-# 脚本仓库（用于下载配置文件）
-SCRIPT_REPO="875706361/x-ui_AI"
+# 使用 875706361/x-ui_AI 仓库下载（包含官方发布包和CPU优化代码）
+RELEASE_REPO="875706361/x-ui_AI"
 DOWNLOAD_BASE="https://github.com/${RELEASE_REPO}/releases/download"
 
 # check root
@@ -163,10 +161,12 @@ install_x-ui() {
     if [ -f "/usr/local/x-ui/x-ui.service" ]; then
         cp /usr/local/x-ui/x-ui.service /etc/systemd/system/x-ui.service
     fi
-    # Use optimized management script from script repo
-    wget --no-check-certificate -O /usr/local/x-ui/x-ui_en.sh https://raw.githubusercontent.com/${SCRIPT_REPO}/main/x-ui_en.sh
-    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${SCRIPT_REPO}/main/x-ui_en.sh
-    chmod +x /usr/local/x-ui/x-ui_en.sh
+    # Use optimized management script from repo
+    wget --no-check-certificate -O /usr/local/x-ui/x-ui_en.sh https://raw.githubusercontent.com/${RELEASE_REPO}/main/x-ui_en.sh
+    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${RELEASE_REPO}/main/x-ui_en.sh
+    # Download resource monitoring script
+    wget --no-check-certificate -O /usr/local/x-ui/monitor.sh https://raw.githubusercontent.com/${RELEASE_REPO}/main/monitor.sh
+    chmod +x /usr/local/x-ui/x-ui_en.sh /usr/local/x-ui/monitor.sh
     chmod +x /usr/bin/x-ui
     config_after_install
     systemctl daemon-reload
