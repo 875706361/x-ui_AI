@@ -8,8 +8,11 @@ yellow='\033[0;33m'
 plain='\033[0m'
 
 # 仓库配置
-GITHUB_REPO="875706361/x-ui_AI"
-DOWNLOAD_BASE="https://github.com/${GITHUB_REPO}/releases/download"
+# 官方发布仓库（用于下载压缩包）
+RELEASE_REPO="FranzKafkaYu/x-ui"
+# 脚本仓库（用于下载配置文件）
+SCRIPT_REPO="875706361/x-ui_AI"
+DOWNLOAD_BASE="https://github.com/${RELEASE_REPO}/releases/download"
 
 # check root
 [[ $EUID -ne 0 ]] && echo -e "${red}Fatal error:${plain}please run this script with root privilege\n" && exit 1
@@ -125,20 +128,20 @@ install_x-ui() {
     cd /usr/local/
 
     if [ $# == 0 ]; then
-        last_version=$(curl -Ls "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        last_version=$(curl -Ls "https://api.github.com/repos/${RELEASE_REPO}/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
         if [[ ! -n "$last_version" ]]; then
             echo -e "${red}refresh x-ui version failed,it may due to Github API restriction,please try it later${plain}"
             exit 1
         fi
         echo -e "get x-ui latest version succeed:${last_version},begin to install..."
-        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${DOWNLOAD_BASE}/${last_version}/x-ui-v1.0.0-cpu-optimized-linux-${arch}.tar.gz
+        wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${DOWNLOAD_BASE}/${last_version}/x-ui-linux-${arch}.tar.gz
         if [[ $? -ne 0 ]]; then
             echo -e "${red}download x-ui failed,please be sure that your server can access Github${plain}"
             exit 1
         fi
     else
         last_version=$1
-        url="${DOWNLOAD_BASE}/${last_version}/x-ui-v1.0.0-cpu-optimized-linux-${arch}.tar.gz"
+        url="${DOWNLOAD_BASE}/${last_version}/x-ui-linux-${arch}.tar.gz"
         echo -e "begin to install x-ui v$1 ..."
         wget -N --no-check-certificate -O /usr/local/x-ui-linux-${arch}.tar.gz ${url}
         if [[ $? -ne 0 ]]; then
@@ -152,18 +155,17 @@ install_x-ui() {
     fi
 
     mkdir -p /usr/local/x-ui
-    tar zxvf x-ui-linux-${arch}.tar.gz -C /usr/local/x-ui
+    tar zxvf x-ui-linux-${arch}.tar.gz -C /usr/local/x-ui --strip-components=1
     rm x-ui-linux-${arch}.tar.gz -f
     cd /usr/local/x-ui
-    chmod +x x-ui xray-linux-${arch}
-    # Create bin directory and move xray
-    mkdir -p bin
-    mv xray-linux-${arch} bin/
-    # Download service file from repo
-    wget --no-check-certificate -O /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/${GITHUB_REPO}/main/x-ui.service
-    # Download management script from repo
-    wget --no-check-certificate -O /usr/local/x-ui/x-ui_en.sh https://raw.githubusercontent.com/${GITHUB_REPO}/main/x-ui_en.sh
-    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/main/x-ui_en.sh
+    chmod +x x-ui x-ui_en.sh bin/xray-linux-${arch}
+    # Use official service file from tarball
+    if [ -f "/usr/local/x-ui/x-ui.service" ]; then
+        cp /usr/local/x-ui/x-ui.service /etc/systemd/system/x-ui.service
+    fi
+    # Use optimized management script from script repo
+    wget --no-check-certificate -O /usr/local/x-ui/x-ui_en.sh https://raw.githubusercontent.com/${SCRIPT_REPO}/main/x-ui_en.sh
+    wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${SCRIPT_REPO}/main/x-ui_en.sh
     chmod +x /usr/local/x-ui/x-ui_en.sh
     chmod +x /usr/bin/x-ui
     config_after_install
