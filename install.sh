@@ -165,6 +165,8 @@ install_x-ui() {
     # 管理脚本从仓库下载
     wget --no-check-certificate -O /usr/local/x-ui/x-ui.sh https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.sh
     wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.sh
+    chmod +x /usr/local/x-ui/x-ui.sh
+    chmod +x /usr/bin/x-ui
     config_after_install
     systemctl daemon-reload
     systemctl enable x-ui
