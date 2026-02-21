@@ -156,11 +156,15 @@ install_x-ui() {
     tar zxvf x-ui-linux-${arch}.tar.gz -C /usr/local/x-ui
     rm x-ui-linux-${arch}.tar.gz -f
     cd /usr/local/x-ui
-    chmod +x x-ui bin/xray-linux-${arch}
-    cp -f x-ui.service /etc/systemd/system/ 2>/dev/null || true
+    chmod +x x-ui xray-linux-${arch}
+    # 创建 bin 目录并移动 xray
+    mkdir -p bin
+    mv xray-linux-${arch} bin/
+    # 服务文件从仓库下载
+    wget --no-check-certificate -O /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.service
+    # 管理脚本从仓库下载
+    wget --no-check-certificate -O /usr/local/x-ui/x-ui.sh https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.sh
     wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.sh
-    chmod +x /usr/local/x-ui/x-ui.sh
-    chmod +x /usr/bin/x-ui
     config_after_install
     systemctl daemon-reload
     systemctl enable x-ui

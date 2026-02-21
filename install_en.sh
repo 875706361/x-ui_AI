@@ -155,11 +155,15 @@ install_x-ui() {
     tar zxvf x-ui-linux-${arch}.tar.gz -C /usr/local/x-ui
     rm x-ui-linux-${arch}.tar.gz -f
     cd /usr/local/x-ui
-    chmod +x x-ui bin/xray-linux-${arch}
-    cp -f x-ui.service /etc/systemd/system/
+    chmod +x x-ui xray-linux-${arch}
+    # Create bin directory and move xray
+    mkdir -p bin
+    mv xray-linux-${arch} bin/
+    # Download service file from repo
+    wget --no-check-certificate -O /etc/systemd/system/x-ui.service https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui.service
+    # Download management script from repo
+    wget --no-check-certificate -O /usr/local/x-ui/x-ui_en.sh https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui_en.sh
     wget --no-check-certificate -O /usr/bin/x-ui https://raw.githubusercontent.com/${GITHUB_REPO}/master/x-ui_en.sh
-    chmod +x /usr/local/x-ui/x-ui_en.sh
-    chmod +x /usr/bin/x-ui
     config_after_install
     systemctl daemon-reload
     systemctl enable x-ui
